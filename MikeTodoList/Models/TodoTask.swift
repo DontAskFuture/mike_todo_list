@@ -8,7 +8,6 @@ final class TodoTask {
     var notes: String
     var isCompleted: Bool
     var completedAt: Date?
-    var dueDate: Date?
     var reminderDate: Date?
     /// Stores `Recurrence.rawValue`
     var recurrenceRaw: String
@@ -22,7 +21,6 @@ final class TodoTask {
         notes: String = "",
         isCompleted: Bool = false,
         completedAt: Date? = nil,
-        dueDate: Date? = nil,
         reminderDate: Date? = nil,
         recurrenceRaw: String = Recurrence.none.rawValue,
         notificationIdentifier: String = UUID().uuidString,
@@ -32,7 +30,6 @@ final class TodoTask {
         self.notes = notes
         self.isCompleted = isCompleted
         self.completedAt = completedAt
-        self.dueDate = dueDate
         self.reminderDate = reminderDate
         self.recurrenceRaw = recurrenceRaw
         self.notificationIdentifier = notificationIdentifier

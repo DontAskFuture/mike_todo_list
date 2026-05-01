@@ -16,6 +16,7 @@
 		A10000000000000000000007 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* TaskListView.swift */; };
 		A10000000000000000000008 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* TaskDetailView.swift */; };
 		A10000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* Assets.xcassets */; };
+		A1000000000000000000000D /* ReminderPhraseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* ReminderPhraseParser.swift */; };
 		A1000000000000000000000A /* SwiftData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* SwiftData.framework */; };
 		A1000000000000000000000B /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* UserNotifications.framework */; };
 		U11000000000000000000004 /* MikeTodoListUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = U11000000000000000000003 /* MikeTodoListUITests.swift */; };
@@ -31,6 +32,7 @@
 		B10000000000000000000007 /* TaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListView.swift; sourceTree = "<group>"; };
 		B10000000000000000000008 /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		B10000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B1000000000000000000000D /* ReminderPhraseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderPhraseParser.swift; sourceTree = "<group>"; };
 		B1000000000000000000000A /* SwiftData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftData.framework; path = System/Library/Frameworks/SwiftData.framework; sourceTree = SDKROOT; };
 		B1000000000000000000000B /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		C10000000000000000000001 /* MikeTodoList.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MikeTodoList.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -107,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				B10000000000000000000005 /* NotificationScheduler.swift */,
+				B1000000000000000000000D /* ReminderPhraseParser.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -254,6 +257,7 @@
 				A10000000000000000000006 /* ProjectListView.swift in Sources */,
 				A10000000000000000000007 /* TaskListView.swift in Sources */,
 				A10000000000000000000008 /* TaskDetailView.swift in Sources */,
+				A1000000000000000000000D /* ReminderPhraseParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

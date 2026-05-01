@@ -6,6 +6,8 @@ struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var filter: TaskFilter = .active
+    /// Opens task detail on the parent stack—never nest `NavigationStack` here or Projects stops navigating.
+    @State private var taskDetailRoute: TaskDetailRoute?
 
     enum TaskFilter: String, CaseIterable {
         case active = "Active"
@@ -48,9 +50,21 @@ struct TaskListView: View {
                                 toggleCompletion(for: task)
                             }
 
-                            NavigationLink(value: task) {
-                                TaskRowView(task: task)
+                            Button {
+                                taskDetailRoute = TaskDetailRoute(id: task.persistentModelID)
+                            } label: {
+                                HStack(spacing: 8) {
+                                    TaskRowView(task: task)
+                                        .multilineTextAlignment(.leading)
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Opens task details")
                         }
                     }
                     .onDelete { offsets in
@@ -61,8 +75,10 @@ struct TaskListView: View {
         }
         .navigationTitle(project.name)
         .navigationBarTitleDisplayMode(.large)
-        .navigationDestination(for: TodoTask.self) { task in
-            TaskDetailView(task: task)
+        .navigationDestination(item: $taskDetailRoute) { route in
+            if let task = project.tasks.first(where: { $0.persistentModelID == route.id }) {
+                TaskDetailView(task: task)
+            }
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -86,8 +102,10 @@ struct TaskListView: View {
     }
 
     private func addTask() {
-        let task = TodoTask(title: "New task", project: project)
+        let task = TodoTask(title: "", project: project)
         modelContext.insert(task)
+        filter = .active
+        taskDetailRoute = TaskDetailRoute(id: task.persistentModelID)
     }
 
     private func deleteTasks(at offsets: IndexSet) {
@@ -115,6 +133,10 @@ struct TaskListView: View {
             }
         }
     }
+}
+
+private struct TaskDetailRoute: Identifiable, Hashable {
+    let id: PersistentIdentifier
 }
 
 /// Tappable control separate from `NavigationLink` so completion does not open the editor.
@@ -150,12 +172,6 @@ private struct TaskRowView: View {
             Text(task.title)
                 .font(.headline)
                 .strikethrough(task.isCompleted)
-
-            if let due = task.dueDate {
-                Label(due.formatted(date: .abbreviated, time: .shortened), systemImage: "calendar")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
 
             if let reminder = task.reminderDate {
                 Label(reminder.formatted(date: .abbreviated, time: .shortened), systemImage: "bell")

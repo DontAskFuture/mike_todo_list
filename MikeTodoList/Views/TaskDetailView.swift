@@ -9,8 +9,9 @@ struct TaskDetailView: View {
     @State private var validationAlert = false
     @State private var notificationDeniedAlert = false
 
-    @State private var hasDueDate = false
     @State private var hasReminder = false
+    /// Debounces parsing title + notes so reminders appear shortly after you pause typing.
+    @State private var reminderPhraseDetectionTask: Task<Void, Never>?
 
     var body: some View {
         Form {
@@ -28,24 +29,6 @@ struct TaskDetailView: View {
                 }
             }
 
-            Section("Due date") {
-                Toggle("Due date", isOn: $hasDueDate)
-                    .onChange(of: hasDueDate) { _, on in
-                        if !on { task.dueDate = nil }
-                        else if task.dueDate == nil { task.dueDate = Date() }
-                    }
-                if hasDueDate {
-                    DatePicker(
-                        "Due",
-                        selection: Binding(
-                            get: { task.dueDate ?? Date() },
-                            set: { task.dueDate = $0 }
-                        ),
-                        displayedComponents: [.date, .hourAndMinute]
-                    )
-                }
-            }
-
             Section("Reminder") {
                 Toggle("Reminder", isOn: $hasReminder)
                     .onChange(of: hasReminder) { _, on in
@@ -54,10 +37,19 @@ struct TaskDetailView: View {
                             task.recurrenceRaw = Recurrence.none.rawValue
                             Task { await syncNotifications() }
                         } else if task.reminderDate == nil {
-                            task.reminderDate = Calendar.current.date(byAdding: .hour, value: 1, to: Date())
+                            applyNaturalLanguageReminderHints()
+                            if task.reminderDate == nil {
+                                task.reminderDate = Calendar.current.date(byAdding: .hour, value: 1, to: Date())
+                            }
                             Task { await syncNotifications() }
                         }
                     }
+
+                Text(
+                    "We scan the title and description while you type (after a short pause). Date hints: today, tomorrow 3 pm, next week, Monday 9 am, in 2 hours (only if no reminder time is set yet). Repeat: phrases like every day, weekly, every week, monthly, every month."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
 
                 if hasReminder {
                     DatePicker(
@@ -88,14 +80,6 @@ struct TaskDetailView: View {
                     .foregroundStyle(.secondary)
                 }
             }
-
-            Section("Status") {
-                Toggle("Completed", isOn: $task.isCompleted)
-                    .onChange(of: task.isCompleted) { _, done in
-                        task.completedAt = done ? Date() : nil
-                        Task { await syncNotifications() }
-                    }
-            }
         }
         .navigationTitle("Task")
         .navigationBarTitleDisplayMode(.inline)
@@ -108,21 +92,29 @@ struct TaskDetailView: View {
                         return
                     }
                     task.title = trimmed
+                    applyNaturalLanguageReminderHints()
+                    if task.reminderDate != nil {
+                        hasReminder = true
+                    }
                     dismiss()
                 }
             }
         }
         .onAppear {
-            hasDueDate = task.dueDate != nil
             hasReminder = task.reminderDate != nil
+            scheduleReminderPhraseDetection()
         }
         .onDisappear {
+            reminderPhraseDetectionTask?.cancel()
+            reminderPhraseDetectionTask = nil
             Task { await syncNotifications() }
         }
         .onChange(of: task.title) { _, _ in
+            scheduleReminderPhraseDetection()
             Task { await syncNotifications() }
         }
         .onChange(of: task.notes) { _, _ in
+            scheduleReminderPhraseDetection()
             Task { await syncNotifications() }
         }
         .alert("Title required", isPresented: $validationAlert) {
@@ -134,6 +126,41 @@ struct TaskDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Enable notifications in Settings to receive reminders.")
+        }
+    }
+
+    /// After typing pauses briefly, applies natural-language reminder time (if unset) and repeat hints.
+    private func scheduleReminderPhraseDetection() {
+        reminderPhraseDetectionTask?.cancel()
+        reminderPhraseDetectionTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(380))
+            guard !Task.isCancelled else { return }
+            applyNaturalLanguageReminderHints()
+            if task.reminderDate != nil {
+                hasReminder = true
+            }
+            await syncNotifications()
+        }
+    }
+
+    /// Fills reminder time and repeat from informal phrases when appropriate.
+    private func applyNaturalLanguageReminderHints() {
+        guard !task.isCompleted else { return }
+
+        if task.reminderDate == nil {
+            if let parsed = ReminderPhraseParser.suggestedReminderDate(
+                title: task.title,
+                notes: task.notes,
+                reference: Date()
+            ) {
+                task.reminderDate = parsed
+            }
+        }
+
+        if task.recurrence == .none,
+           let recurring = ReminderPhraseParser.suggestedRecurrence(title: task.title, notes: task.notes)
+        {
+            task.recurrence = recurring
         }
     }
 
