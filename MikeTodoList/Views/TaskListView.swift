@@ -40,8 +40,17 @@ struct TaskListView: View {
             } else {
                 List {
                     ForEach(displayedTasks) { task in
-                        NavigationLink(value: task) {
-                            TaskRowView(task: task)
+                        HStack(alignment: .center, spacing: 14) {
+                            TaskCompleteButton(
+                                isCompleted: task.isCompleted,
+                                accessibilityTitle: task.title
+                            ) {
+                                toggleCompletion(for: task)
+                            }
+
+                            NavigationLink(value: task) {
+                                TaskRowView(task: task)
+                            }
                         }
                     }
                     .onDelete { offsets in
@@ -88,6 +97,48 @@ struct TaskListView: View {
             NotificationScheduler.cancel(for: task)
             modelContext.delete(task)
         }
+    }
+
+    private func toggleCompletion(for task: TodoTask) {
+        withAnimation(.easeInOut(duration: 0.22)) {
+            task.isCompleted.toggle()
+            task.completedAt = task.isCompleted ? Date() : nil
+        }
+        if task.isCompleted {
+            NotificationScheduler.cancel(for: task)
+        } else if task.reminderDate != nil {
+            Task {
+                await NotificationScheduler.reschedule(
+                    task: task,
+                    persistentTaskID: String(describing: task.persistentModelID)
+                )
+            }
+        }
+    }
+}
+
+/// Tappable control separate from `NavigationLink` so completion does not open the editor.
+private struct TaskCompleteButton: View {
+    let isCompleted: Bool
+    let accessibilityTitle: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 28, weight: .regular))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isCompleted ? .green : .secondary)
+                .symbolEffect(.bounce, value: isCompleted)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            isCompleted
+                ? "Mark \(accessibilityTitle) as not done"
+                : "Mark \(accessibilityTitle) as done"
+        )
     }
 }
 
