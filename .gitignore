@@ -1,0 +1,56 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Xcode — user-specific & build products
+DerivedData/
+build/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+**/xcdebugger/
+
+# Xcode — Swift Package Manager
+.swiftpm/configuration/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+fastlane/readme.md
+
+# Archives & symbols
+*.ipa
+*.ipa.zip
+*.dSYM.zip
+
+# Instruments
+*.trace
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# IDEs
+.idea/
+
+# Provisioning & certs (local only)
+*.mobileprovision
+*.p12
+
+# SwiftPM checkouts (when using workspace-based resolution)
+**/SourcePackages/checkouts/
