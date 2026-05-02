@@ -5,79 +5,111 @@ struct TaskListView: View {
     @Bindable var project: Project
     @Environment(\.modelContext) private var modelContext
 
+    @State private var tasks: [TodoTask] = []
     @State private var filter: TaskFilter = .active
     /// Opens task detail on the parent stack—never nest `NavigationStack` here or Projects stops navigating.
-    @State private var taskDetailRoute: TaskDetailRoute?
+    @State private var selectedTask: TodoTask?
+    @State private var newTaskID: PersistentIdentifier?
+
+    init(project: Project) {
+        self.project = project
+    }
 
     enum TaskFilter: String, CaseIterable {
         case active = "Active"
         case completed = "Completed"
     }
 
-    private var sortedTasks: [TodoTask] {
-        project.tasks.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-    }
-
     private var displayedTasks: [TodoTask] {
         switch filter {
         case .active:
-            return sortedTasks.filter { !$0.isCompleted }
+            return tasks.filter { !$0.isCompleted }
         case .completed:
-            return sortedTasks.filter(\.isCompleted)
+            return tasks.filter(\.isCompleted)
         }
     }
 
     var body: some View {
-        Group {
+        ZStack {
+            GeekTheme.background.ignoresSafeArea()
+
             if displayedTasks.isEmpty {
-                ContentUnavailableView(
-                    filter == .active ? "No Active Tasks" : "No Completed Tasks",
-                    systemImage: "checklist",
-                    description: Text(
-                        filter == .active
-                            ? "Tap + to add a task."
-                            : "Completed tasks appear here."
-                    )
+                GeekEmptyState(
+                    title: filter == .active ? "QUEUE EMPTY" : "NO ARCHIVED TASKS",
+                    subtitle: filter == .active ? "Tap + to enqueue a task." : "Completed tasks land here.",
+                    symbol: filter == .active ? "terminal" : "checkmark.seal"
                 )
             } else {
                 List {
-                    ForEach(displayedTasks) { task in
-                        HStack(alignment: .center, spacing: 14) {
-                            TaskCompleteButton(
-                                isCompleted: task.isCompleted,
-                                accessibilityTitle: task.title
-                            ) {
-                                toggleCompletion(for: task)
-                            }
-
-                            Button {
-                                taskDetailRoute = TaskDetailRoute(id: task.persistentModelID)
-                            } label: {
-                                HStack(spacing: 8) {
-                                    TaskRowView(task: task)
-                                        .multilineTextAlignment(.leading)
-                                    Spacer(minLength: 0)
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.tertiary)
+                    Section {
+                        ForEach(displayedTasks) { task in
+                            HStack(alignment: .center, spacing: 12) {
+                                TaskCompleteButton(
+                                    isCompleted: task.isCompleted,
+                                    accessibilityTitle: task.title
+                                ) {
+                                    toggleCompletion(for: task)
                                 }
-                                .contentShape(Rectangle())
+
+                                Button {
+                                    selectedTask = task
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        TaskRowView(task: task)
+                                            .multilineTextAlignment(.leading)
+                                        Spacer(minLength: 0)
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(GeekTheme.accent.opacity(0.7))
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityHint("Opens task details")
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityHint("Opens task details")
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: GeekTheme.cornerRadius)
+                                    .fill(GeekTheme.panel)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: GeekTheme.cornerRadius)
+                                            .stroke(task.isCompleted ? GeekTheme.accentDim : GeekTheme.border, lineWidth: 1)
+                                    )
+                            )
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 7, leading: 18, bottom: 7, trailing: 18))
                         }
-                    }
-                    .onDelete { offsets in
-                        deleteTasks(at: offsets)
+                        .onDelete { offsets in
+                            deleteTasks(at: offsets)
+                        }
+                    } header: {
+                        Text(filter == .active ? "ACTIVE" : "COMPLETED")
+                            .font(.caption.monospaced().weight(.semibold))
+                            .foregroundStyle(GeekTheme.accent)
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(GeekTheme.background)
             }
         }
         .navigationTitle(project.name)
         .navigationBarTitleDisplayMode(.large)
-        .navigationDestination(item: $taskDetailRoute) { route in
-            if let task = project.tasks.first(where: { $0.persistentModelID == route.id }) {
-                TaskDetailView(task: task)
+        .onAppear {
+            reloadTasks()
+        }
+        .navigationDestination(item: $selectedTask) { task in
+            TaskDetailView(
+                task: task,
+                deletesEmptyTaskOnDisappear: task.persistentModelID == newTaskID
+            ) {
+                discardNewTaskIfNeeded(task)
+            } onKeepTask: {
+                if task.persistentModelID == newTaskID {
+                    newTaskID = nil
+                }
+                saveAndReloadTasks()
             }
         }
         .toolbar {
@@ -88,6 +120,7 @@ struct TaskListView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .font(.caption.monospaced())
                 .frame(maxWidth: 280)
             }
             ToolbarItem(placement: .primaryAction) {
@@ -102,10 +135,27 @@ struct TaskListView: View {
     }
 
     private func addTask() {
-        let task = TodoTask(title: "", project: project)
+        let task = TodoTask(title: "")
         modelContext.insert(task)
+        task.project = project
+        if !project.tasks.contains(where: { $0.persistentModelID == task.persistentModelID }) {
+            project.tasks.append(task)
+        }
+        project.taskCount += 1
+        tasks.insert(task, at: 0)
         filter = .active
-        taskDetailRoute = TaskDetailRoute(id: task.persistentModelID)
+        newTaskID = task.persistentModelID
+        selectedTask = task
+    }
+
+    private func discardNewTaskIfNeeded(_ task: TodoTask) {
+        guard task.persistentModelID == newTaskID else { return }
+        NotificationScheduler.cancel(for: task)
+        modelContext.delete(task)
+        project.taskCount = max(0, project.taskCount - 1)
+        tasks.removeAll { $0.persistentModelID == task.persistentModelID }
+        newTaskID = nil
+        saveAndReloadTasks()
     }
 
     private func deleteTasks(at offsets: IndexSet) {
@@ -115,6 +165,8 @@ struct TaskListView: View {
             NotificationScheduler.cancel(for: task)
             modelContext.delete(task)
         }
+        project.taskCount = max(0, project.taskCount - offsets.count)
+        saveAndReloadTasks()
     }
 
     private func toggleCompletion(for task: TodoTask) {
@@ -132,11 +184,19 @@ struct TaskListView: View {
                 )
             }
         }
+        saveAndReloadTasks()
     }
-}
 
-private struct TaskDetailRoute: Identifiable, Hashable {
-    let id: PersistentIdentifier
+    private func reloadTasks() {
+        tasks = project.tasks.sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+    }
+
+    private func saveAndReloadTasks() {
+        try? modelContext.save()
+        reloadTasks()
+    }
 }
 
 /// Tappable control separate from `NavigationLink` so completion does not open the editor.
@@ -147,13 +207,13 @@ private struct TaskCompleteButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 28, weight: .regular))
+            Image(systemName: isCompleted ? "checkmark.square.fill" : "square")
+                .font(.system(size: 26, weight: .regular))
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(isCompleted ? .green : .secondary)
+                .foregroundStyle(isCompleted ? GeekTheme.accent : GeekTheme.muted)
                 .symbolEffect(.bounce, value: isCompleted)
                 .frame(width: 44, height: 44)
-                .contentShape(Circle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
@@ -169,14 +229,15 @@ private struct TaskRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(task.title)
-                .font(.headline)
+            Text(task.title.isEmpty ? "untitled" : task.title)
+                .font(.headline.monospaced().weight(.semibold))
+                .foregroundStyle(task.isCompleted ? GeekTheme.muted : GeekTheme.text)
                 .strikethrough(task.isCompleted)
 
             if let reminder = task.reminderDate {
                 Label(reminder.formatted(date: .abbreviated, time: .shortened), systemImage: "bell")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(GeekTheme.muted)
             }
         }
     }

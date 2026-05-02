@@ -2,6 +2,24 @@ import Foundation
 
 /// Parses informal English date/time cues from title + notes (e.g. "tomorrow 3 pm", "next week", "today").
 enum ReminderPhraseParser {
+    private static let dateDetector = try? NSDataDetector(
+        types: NSTextCheckingResult.CheckingType.date.rawValue
+    )
+    private static let relativeIntervalPatterns: [(NSRegularExpression, Calendar.Component)] = [
+        (try! NSRegularExpression(pattern: #"\bin\s+(\d+)\s+minutes?\b"#, options: .caseInsensitive), .minute),
+        (try! NSRegularExpression(pattern: #"\bin\s+(\d+)\s+hours?\b"#, options: .caseInsensitive), .hour),
+        (try! NSRegularExpression(pattern: #"\bin\s+(\d+)\s+days?\b"#, options: .caseInsensitive), .day),
+    ]
+    private static let weekdayRegex = try! NSRegularExpression(
+        pattern: #"\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b"#,
+        options: .caseInsensitive
+    )
+    private static let clockWithMinutesRegex = try! NSRegularExpression(
+        pattern: #"(?i)\b(\d{1,2}):(\d{2})\s*(am|pm|a\.m\.|p\.m\.)?\b"#
+    )
+    private static let clockWithMeridiemRegex = try! NSRegularExpression(
+        pattern: #"(?i)\b(\d{1,2})\s*(am|pm|a\.m\.|p\.m\.)\b"#
+    )
 
     private static func normalizedCombined(title: String, notes: String) -> String {
         [title, notes]
@@ -97,9 +115,7 @@ enum ReminderPhraseParser {
     // MARK: - NSDataDetector
 
     private static func leftmostDataDetectorMatch(_ text: String) -> (Int, Date)? {
-        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) else {
-            return nil
-        }
+        guard let detector = dateDetector else { return nil }
         let ns = text as NSString
         let range = NSRange(location: 0, length: ns.length)
         var bestLoc = Int.max
@@ -128,23 +144,10 @@ enum ReminderPhraseParser {
         let ns = lowered as NSString
         let full = NSRange(location: 0, length: ns.length)
 
-        guard let minutesRx = try? NSRegularExpression(pattern: #"\bin\s+(\d+)\s+minutes?\b"#, options: .caseInsensitive),
-              let hoursRx = try? NSRegularExpression(pattern: #"\bin\s+(\d+)\s+hours?\b"#, options: .caseInsensitive),
-              let daysRx = try? NSRegularExpression(pattern: #"\bin\s+(\d+)\s+days?\b"#, options: .caseInsensitive)
-        else {
-            return nil
-        }
-
-        let patterns: [(NSRegularExpression, Calendar.Component)] = [
-            (minutesRx, .minute),
-            (hoursRx, .hour),
-            (daysRx, .day),
-        ]
-
         var bestLoc = Int.max
         var bestDate: Date?
 
-        for (rx, component) in patterns {
+        for (rx, component) in relativeIntervalPatterns {
             rx.enumerateMatches(in: lowered, options: [], range: full) { match, _, _ in
                 guard let match, match.numberOfRanges >= 2,
                       let n = Int(ns.substring(with: match.range(at: 1))),
@@ -213,14 +216,8 @@ enum ReminderPhraseParser {
     ) -> (Int, Date)? {
         let lowered = text.lowercased()
         let ns = lowered as NSString
-        guard let rx = try? NSRegularExpression(
-            pattern: #"\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b"#,
-            options: .caseInsensitive
-        ) else {
-            return nil
-        }
 
-        guard let match = rx.firstMatch(in: lowered, range: NSRange(location: 0, length: ns.length)),
+        guard let match = weekdayRegex.firstMatch(in: lowered, range: NSRange(location: 0, length: ns.length)),
               let wordRange = Range(match.range(at: 1), in: lowered),
               let weekday = weekdayIndex[String(lowered[wordRange]).lowercased()]
         else {
@@ -263,46 +260,38 @@ enum ReminderPhraseParser {
         var hits: [Hit] = []
 
         // H:MM with optional am/pm
-        if let rx = try? NSRegularExpression(
-            pattern: #"(?i)\b(\d{1,2}):(\d{2})\s*(am|pm|a\.m\.|p\.m\.)?\b"#
-        ) {
-            rx.enumerateMatches(in: text, options: [], range: full) { m, _, _ in
-                guard let m, m.numberOfRanges >= 3,
-                      let h12 = Int(ns.substring(with: m.range(at: 1))),
-                      let minute = Int(ns.substring(with: m.range(at: 2))),
-                      minute <= 59
-                else { return }
+        clockWithMinutesRegex.enumerateMatches(in: text, options: [], range: full) { m, _, _ in
+            guard let m, m.numberOfRanges >= 3,
+                  let h12 = Int(ns.substring(with: m.range(at: 1))),
+                  let minute = Int(ns.substring(with: m.range(at: 2))),
+                  minute <= 59
+            else { return }
 
-                let merRaw = m.range(at: 3).location != NSNotFound
-                    ? ns.substring(with: m.range(at: 3)).lowercased()
-                    : ""
+            let merRaw = m.range(at: 3).location != NSNotFound
+                ? ns.substring(with: m.range(at: 3)).lowercased()
+                : ""
 
-                let hour24: Int
-                if merRaw.isEmpty {
-                    // Treat as 24h only when clearly afternoon per clock face.
-                    guard h12 >= 13, h12 <= 23 else { return }
-                    hour24 = h12
-                } else {
-                    hour24 = adjustTo24Hour(hour12: h12, meridiem: merRaw)
-                }
-
-                hits.append(Hit(loc: m.range.location, hour: hour24, minute: minute))
+            let hour24: Int
+            if merRaw.isEmpty {
+                // Treat as 24h only when clearly afternoon per clock face.
+                guard h12 >= 13, h12 <= 23 else { return }
+                hour24 = h12
+            } else {
+                hour24 = adjustTo24Hour(hour12: h12, meridiem: merRaw)
             }
+
+            hits.append(Hit(loc: m.range.location, hour: hour24, minute: minute))
         }
 
         // H am/pm without minutes
-        if let rx = try? NSRegularExpression(
-            pattern: #"(?i)\b(\d{1,2})\s*(am|pm|a\.m\.|p\.m\.)\b"#
-        ) {
-            rx.enumerateMatches(in: text, options: [], range: full) { m, _, _ in
-                guard let m, m.numberOfRanges >= 3,
-                      let h12 = Int(ns.substring(with: m.range(at: 1))),
-                      h12 >= 1, h12 <= 12
-                else { return }
-                let mer = ns.substring(with: m.range(at: 2)).lowercased()
-                let hour24 = adjustTo24Hour(hour12: h12, meridiem: mer)
-                hits.append(Hit(loc: m.range.location, hour: hour24, minute: 0))
-            }
+        clockWithMeridiemRegex.enumerateMatches(in: text, options: [], range: full) { m, _, _ in
+            guard let m, m.numberOfRanges >= 3,
+                  let h12 = Int(ns.substring(with: m.range(at: 1))),
+                  h12 >= 1, h12 <= 12
+            else { return }
+            let mer = ns.substring(with: m.range(at: 2)).lowercased()
+            let hour24 = adjustTo24Hour(hour12: h12, meridiem: mer)
+            hits.append(Hit(loc: m.range.location, hour: hour24, minute: 0))
         }
 
         guard let best = hits.min(by: { $0.loc < $1.loc }) else { return nil }
