@@ -5,9 +5,13 @@ struct ProjectListView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var projects: [Project] = []
+    /// Sheet dismissal triggers `onAppear` again; skip redundant reloads so a transient empty fetch can't wipe the list.
+    @State private var didPerformInitialFetch = false
     @State private var newProjectName = ""
     @State private var showingAdd = false
     @State private var persistenceError: String?
+    /// `NavigationLink` adds its own trailing chevron; drive navigation manually so only `ProjectCard`'s arrow shows.
+    @State private var selectedProject: Project?
 
     var body: some View {
         NavigationStack {
@@ -24,9 +28,13 @@ struct ProjectListView: View {
                     List {
                         Section {
                             ForEach(projects) { project in
-                                NavigationLink(value: project) {
+                                Button {
+                                    selectedProject = project
+                                } label: {
                                     ProjectCard(project: project)
                                 }
+                                .buttonStyle(.plain)
+                                .accessibilityHint("Opens project tasks")
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                                 .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
@@ -44,11 +52,14 @@ struct ProjectListView: View {
                 }
             }
             .navigationTitle("Projects")
-            .navigationDestination(for: Project.self) { project in
+            .navigationDestination(item: $selectedProject) { project in
                 TaskListView(project: project)
             }
             .onAppear {
-                reloadProjects()
+                if !didPerformInitialFetch {
+                    didPerformInitialFetch = true
+                    reloadProjects()
+                }
                 repairTaskCountsIfNeeded()
             }
             .toolbar {
@@ -80,7 +91,7 @@ struct ProjectListView: View {
                             Button("Add") {
                                 addProject()
                             }
-                            .disabled(newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .accessibilityIdentifier("addProjectConfirm")
                         }
                     }
                 }
@@ -105,7 +116,9 @@ struct ProjectListView: View {
         modelContext.insert(project)
 
         do {
+            modelContext.processPendingChanges()
             try modelContext.save()
+            // Immediate fetch can transiently return [] — keep the row visible regardless.
             if !projects.contains(where: { $0.persistentModelID == project.persistentModelID }) {
                 projects.insert(project, at: 0)
             }
@@ -125,6 +138,7 @@ struct ProjectListView: View {
             modelContext.delete(project)
         }
         do {
+            modelContext.processPendingChanges()
             try modelContext.save()
             reloadProjects()
         } catch {
@@ -156,6 +170,7 @@ struct ProjectListView: View {
         }
         if repaired {
             do {
+                modelContext.processPendingChanges()
                 try modelContext.save()
                 reloadProjects()
             } catch {

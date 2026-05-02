@@ -32,7 +32,7 @@ final class MikeTodoListUITests: XCTestCase {
         nameField.tap()
         nameField.typeText(projectName)
 
-        app.buttons["Add"].tap()
+        app.buttons.matching(identifier: "addProjectConfirm").element.tap()
 
         XCTAssertTrue(
             app.staticTexts[projectName].waitForExistence(timeout: 5),
@@ -55,7 +55,7 @@ final class MikeTodoListUITests: XCTestCase {
         XCTAssertTrue(projectField.waitForExistence(timeout: 3))
         projectField.tap()
         projectField.typeText(projectName)
-        app.buttons["Add"].tap()
+        app.buttons.matching(identifier: "addProjectConfirm").element.tap()
 
         let projectText = app.staticTexts[projectName]
         XCTAssertTrue(projectText.waitForExistence(timeout: 5))

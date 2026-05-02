@@ -149,7 +149,12 @@ struct TaskDetailView: View {
                 }
             }
             applyNaturalLanguageReminderHints()
-            try? modelContext.save()
+            do {
+                modelContext.processPendingChanges()
+                try modelContext.save()
+            } catch {
+                // Persistence failure is rare; parent list save paths surface alerts where applicable.
+            }
             onKeepTask?()
             Task { await syncNotifications() }
         }

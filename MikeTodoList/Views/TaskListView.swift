@@ -6,10 +6,15 @@ struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var tasks: [TodoTask] = []
+    /// Cached, filter-applied projection of `tasks` so SwiftUI body re-renders don't re-filter every time.
+    @State private var displayedTasks: [TodoTask] = []
     @State private var filter: TaskFilter = .active
     /// Opens task detail on the parent stack—never nest `NavigationStack` here or Projects stops navigating.
     @State private var selectedTask: TodoTask?
     @State private var newTaskID: PersistentIdentifier?
+    /// Avoid re-fetching/re-sorting `project.tasks` on every back-navigation; mutations refresh explicitly.
+    @State private var didInitialLoad = false
+    @State private var persistenceError: String?
 
     init(project: Project) {
         self.project = project
@@ -18,15 +23,6 @@ struct TaskListView: View {
     enum TaskFilter: String, CaseIterable {
         case active = "Active"
         case completed = "Completed"
-    }
-
-    private var displayedTasks: [TodoTask] {
-        switch filter {
-        case .active:
-            return tasks.filter { !$0.isCompleted }
-        case .completed:
-            return tasks.filter(\.isCompleted)
-        }
     }
 
     var body: some View {
@@ -97,7 +93,12 @@ struct TaskListView: View {
         .navigationTitle(project.name)
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
+            guard !didInitialLoad else { return }
+            didInitialLoad = true
             reloadTasks()
+        }
+        .onChange(of: filter) { _, _ in
+            updateDisplayedTasks()
         }
         .navigationDestination(item: $selectedTask) { task in
             TaskDetailView(
@@ -132,6 +133,14 @@ struct TaskListView: View {
                 .accessibilityLabel("Add task")
             }
         }
+        .alert("Could not save", isPresented: Binding(
+            get: { persistenceError != nil },
+            set: { if !$0 { persistenceError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(persistenceError ?? "Unknown error")
+        }
     }
 
     private func addTask() {
@@ -144,8 +153,10 @@ struct TaskListView: View {
         project.taskCount += 1
         tasks.insert(task, at: 0)
         filter = .active
+        updateDisplayedTasks()
         newTaskID = task.persistentModelID
         selectedTask = task
+        saveAndReloadTasks()
     }
 
     private func discardNewTaskIfNeeded(_ task: TodoTask) {
@@ -156,6 +167,15 @@ struct TaskListView: View {
         tasks.removeAll { $0.persistentModelID == task.persistentModelID }
         newTaskID = nil
         saveAndReloadTasks()
+    }
+
+    private func updateDisplayedTasks() {
+        switch filter {
+        case .active:
+            displayedTasks = tasks.filter { !$0.isCompleted }
+        case .completed:
+            displayedTasks = tasks.filter(\.isCompleted)
+        }
     }
 
     private func deleteTasks(at offsets: IndexSet) {
@@ -191,10 +211,17 @@ struct TaskListView: View {
         tasks = project.tasks.sorted {
             $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
         }
+        updateDisplayedTasks()
     }
 
     private func saveAndReloadTasks() {
-        try? modelContext.save()
+        do {
+            modelContext.processPendingChanges()
+            try modelContext.save()
+            persistenceError = nil
+        } catch {
+            persistenceError = error.localizedDescription
+        }
         reloadTasks()
     }
 }
