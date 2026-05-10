@@ -13,7 +13,6 @@ struct TaskDetailView: View {
     @State private var validationAlert = false
     @State private var notificationDeniedAlert = false
 
-    @State private var hasReminder = false
     @State private var naturalLanguageDetectionDisabled = false
     /// Debounces parsing title + notes and notification updates while typing.
     @State private var editProcessingTask: Task<Void, Never>?
@@ -56,25 +55,33 @@ struct TaskDetailView: View {
             .listRowBackground(GeekTheme.panel)
 
             Section("Reminder") {
-                Toggle("Reminder", isOn: $hasReminder)
-                    .font(.body.monospaced().weight(.semibold))
-                    .foregroundStyle(GeekTheme.text)
-                    .tint(GeekTheme.accent)
-                    .onChange(of: hasReminder) { _, on in
-                        if !on {
-                            naturalLanguageDetectionDisabled = true
-                            task.reminderDate = nil
-                            task.recurrenceRaw = Recurrence.none.rawValue
-                            Task { await syncNotifications() }
-                        } else if task.reminderDate == nil {
-                            naturalLanguageDetectionDisabled = false
-                            applyNaturalLanguageReminderHints()
-                            if task.reminderDate == nil {
-                                task.reminderDate = Calendar.current.date(byAdding: .hour, value: 1, to: Date())
+                Toggle(
+                    "Reminder",
+                    isOn: Binding(
+                        get: { task.reminderDate != nil },
+                        set: { on in
+                            if !on {
+                                naturalLanguageDetectionDisabled = true
+                                task.reminderDate = nil
+                                task.recurrenceRaw = Recurrence.none.rawValue
+                                Task { await syncNotifications() }
+                            } else {
+                                naturalLanguageDetectionDisabled = false
+                                applyNaturalLanguageReminderHints()
+                                if task.reminderDate == nil {
+                                    task.reminderDate =
+                                        Calendar.current.date(byAdding: .hour, value: 1, to: Date())
+                                        ?? Date().addingTimeInterval(3600)
+                                }
+                                Task { await syncNotifications() }
                             }
-                            Task { await syncNotifications() }
                         }
-                    }
+                    )
+                )
+                .font(.body.monospaced().weight(.semibold))
+                .foregroundStyle(GeekTheme.text)
+                .tint(GeekTheme.accent)
+                .accessibilityIdentifier("taskReminderToggle")
 
                 Text(
                     "We scan the title and description while you type (after a short pause). Date hints: today, tomorrow 3 pm, next week, Monday 9 am, in 2 hours (only if no reminder time is set yet). Repeat: phrases like every day, weekly, every week, monthly, every month."
@@ -82,7 +89,7 @@ struct TaskDetailView: View {
                 .font(.footnote.monospaced())
                 .foregroundStyle(GeekTheme.muted)
 
-                if hasReminder {
+                if task.reminderDate != nil {
                     DatePicker(
                         "Date & time",
                         selection: Binding(
@@ -97,6 +104,7 @@ struct TaskDetailView: View {
                     .font(.body.monospaced())
                     .foregroundStyle(GeekTheme.text)
                     .tint(GeekTheme.accent)
+                    .accessibilityIdentifier("taskReminderDatePicker")
 
                     Picker("Repeat", selection: $task.recurrenceRaw) {
                         ForEach(Recurrence.allCases) { r in
@@ -135,9 +143,6 @@ struct TaskDetailView: View {
                 }
                 .font(.body.monospaced().weight(.semibold))
             }
-        }
-        .onAppear {
-            hasReminder = task.reminderDate != nil
         }
         .onDisappear {
             editProcessingTask?.cancel()
@@ -183,9 +188,6 @@ struct TaskDetailView: View {
             try? await Task.sleep(for: .milliseconds(380))
             guard !Task.isCancelled else { return }
             applyNaturalLanguageReminderHints()
-            if task.reminderDate != nil {
-                hasReminder = true
-            }
             await syncNotifications()
         }
     }
@@ -213,6 +215,10 @@ struct TaskDetailView: View {
     }
 
     private func syncNotifications() async {
+        if ProcessInfo.processInfo.arguments.contains("-UITestSkipNotifications") {
+            return
+        }
+
         let trimmed = task.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             NotificationScheduler.cancel(for: task)

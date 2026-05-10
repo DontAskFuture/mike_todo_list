@@ -16,11 +16,21 @@
 		A10000000000000000000007 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* TaskListView.swift */; };
 		A10000000000000000000008 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* TaskDetailView.swift */; };
 		A10000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* Assets.xcassets */; };
-		A1000000000000000000000D /* ReminderPhraseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* ReminderPhraseParser.swift */; };
 		A1000000000000000000000A /* SwiftData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* SwiftData.framework */; };
 		A1000000000000000000000B /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* UserNotifications.framework */; };
+		A1000000000000000000000D /* ReminderPhraseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* ReminderPhraseParser.swift */; };
 		U11000000000000000000004 /* MikeTodoListUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = U11000000000000000000003 /* MikeTodoListUITests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		U11000000000000000000017 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F10000000000000000000005 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F10000000000000000000001;
+			remoteInfo = MikeTodoList;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		B10000000000000000000001 /* MikeTodoListApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MikeTodoListApp.swift; sourceTree = "<group>"; };
@@ -32,9 +42,9 @@
 		B10000000000000000000007 /* TaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListView.swift; sourceTree = "<group>"; };
 		B10000000000000000000008 /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		B10000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		B1000000000000000000000D /* ReminderPhraseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderPhraseParser.swift; sourceTree = "<group>"; };
 		B1000000000000000000000A /* SwiftData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftData.framework; path = System/Library/Frameworks/SwiftData.framework; sourceTree = SDKROOT; };
 		B1000000000000000000000B /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+		B1000000000000000000000D /* ReminderPhraseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderPhraseParser.swift; sourceTree = "<group>"; };
 		C10000000000000000000001 /* MikeTodoList.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MikeTodoList.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		U11000000000000000000002 /* MikeTodoListUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MikeTodoListUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		U11000000000000000000003 /* MikeTodoListUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MikeTodoListUITests.swift; sourceTree = "<group>"; };
@@ -50,9 +60,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXFrameworksBuildPhase section */
 		U11000000000000000000006 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -123,14 +130,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		U11000000000000000000007 /* MikeTodoListUITests */ = {
-			isa = PBXGroup;
-			children = (
-				U11000000000000000000003 /* MikeTodoListUITests.swift */,
-			);
-			path = MikeTodoListUITests;
-			sourceTree = "<group>";
-		};
 		E10000000000000000000007 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -138,6 +137,14 @@
 				B1000000000000000000000B /* UserNotifications.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		U11000000000000000000007 /* MikeTodoListUITests */ = {
+			isa = PBXGroup;
+			children = (
+				U11000000000000000000003 /* MikeTodoListUITests.swift */,
+			);
+			path = MikeTodoListUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -178,24 +185,6 @@
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXContainerItemProxy section */
-		U11000000000000000000017 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = F10000000000000000000005 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = F10000000000000000000001;
-			remoteInfo = MikeTodoList;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXTargetDependency section */
-		U11000000000000000000016 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = F10000000000000000000001 /* MikeTodoList */;
-			targetProxy = U11000000000000000000017 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		F10000000000000000000005 /* Project object */ = {
@@ -270,6 +259,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		U11000000000000000000016 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F10000000000000000000001 /* MikeTodoList */;
+			targetProxy = U11000000000000000000017 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		G10000000000000000000001 /* Debug */ = {
@@ -398,7 +395,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = GQKVM343RT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -426,7 +423,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = GQKVM343RT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

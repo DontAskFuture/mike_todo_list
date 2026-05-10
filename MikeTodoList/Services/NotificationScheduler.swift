@@ -16,6 +16,10 @@ enum NotificationScheduler {
     static func reschedule(task: TodoTask, persistentTaskID: String) async {
         cancel(for: task)
 
+        if ProcessInfo.processInfo.arguments.contains("-UITestSkipNotifications") {
+            return
+        }
+
         guard !task.isCompleted, let reminder = task.reminderDate else {
             return
         }

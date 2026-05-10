@@ -262,9 +262,12 @@ private struct TaskRowView: View {
                 .strikethrough(task.isCompleted)
 
             if let reminder = task.reminderDate {
-                Label(reminder.formatted(date: .abbreviated, time: .shortened), systemImage: "bell")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(GeekTheme.muted)
+                Group {
+                    Label(reminder.formatted(date: .abbreviated, time: .shortened), systemImage: "bell")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(GeekTheme.muted)
+                }
+                .accessibilityIdentifier("taskRowReminder")
             }
         }
     }
